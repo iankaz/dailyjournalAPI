@@ -1,9 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
 const cors = require('cors');
+const connectDB = require('./config/database');
 const journalRoutes = require('./routes/journalRoutes');
 
 const app = express();
@@ -101,17 +101,14 @@ const startServer = (port) => {
   });
 };
 
-// MongoDB connection and server start
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/dailyjournal';
-
-console.log('Attempting to connect to MongoDB...');
-console.log('MongoDB URI:', MONGODB_URI);
-
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('Connected to MongoDB successfully');
+// Start the application
+const startApp = async () => {
+  try {
+    // Connect to MongoDB
+    await connectDB();
+    
     // Try to start server on default port
-    startServer(DEFAULT_PORT)
+    await startServer(DEFAULT_PORT)
       .catch(() => {
         // If default port fails, try alternative ports
         const tryNextPort = async (ports) => {
@@ -128,10 +125,10 @@ mongoose.connect(MONGODB_URI)
         };
         tryNextPort(ALTERNATIVE_PORTS);
       });
-  })
-  .catch((error) => {
-    console.error('MongoDB connection error:', error);
-    console.log('Please make sure MongoDB is running and the connection string is correct.');
-    console.log('You can set the MONGODB_URI in your .env file or use the default local connection.');
+  } catch (error) {
+    console.error('Application startup error:', error);
     process.exit(1);
-  }); 
+  }
+};
+
+startApp(); 
