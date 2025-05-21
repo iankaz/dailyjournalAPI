@@ -2,14 +2,12 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Get the base MongoDB URI from environment variable
-    const baseMongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
+    // Get the MongoDB URI from environment variable
+    const MONGODB_URI = process.env.MONGODB_URI;
     
-    // Extract the base URI without the database name
-    const baseURI = baseMongoURI.split('/').slice(0, -1).join('/');
-    
-    // Add the correct database name
-    const MONGODB_URI = `${baseURI}/dailyjournal`;
+    if (!MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined in environment variables');
+    }
     
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Attempting to connect to MongoDB...');
@@ -18,13 +16,18 @@ const connectDB = async () => {
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     };
     
     await mongoose.connect(MONGODB_URI, options);
     console.log('Connected to MongoDB successfully');
     console.log('Using database:', mongoose.connection.name);
+    
+    // Verify we're connected to the correct database
+    if (mongoose.connection.name !== 'dailyjournal') {
+      console.warn(`Warning: Connected to database '${mongoose.connection.name}' instead of 'dailyjournal'`);
+    }
     
     // Log connection state
     console.log('MongoDB connection state:', mongoose.connection.readyState);
