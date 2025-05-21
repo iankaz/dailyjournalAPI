@@ -59,6 +59,59 @@ const swaggerOptions = {
         description: `Alternative server (port ${port})`
       }))
     ],
+    components: {
+      schemas: {
+        Journal: {
+          type: 'object',
+          required: ['title', 'content'],
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'The auto-generated id of the journal entry'
+            },
+            title: {
+              type: 'string',
+              description: 'The title of the journal entry',
+              maxLength: 100
+            },
+            content: {
+              type: 'string',
+              description: 'The content of the journal entry'
+            },
+            mood: {
+              type: 'string',
+              description: 'The mood associated with the entry',
+              enum: [
+                'happy', 'joyful', 'excited', 'enthusiastic', 'grateful', 'peaceful',
+                'content', 'energetic', 'inspired', 'proud', 'optimistic', 'relaxed',
+                'motivated', 'confident', 'cheerful', 'loved', 'blessed', 'accomplished',
+                'neutral', 'calm', 'focused', 'thoughtful', 'contemplative', 'balanced',
+                'mindful', 'present', 'centered', 'curious', 'reflective',
+                'sad', 'angry', 'frustrated', 'anxious', 'stressed', 'tired',
+                'overwhelmed', 'disappointed', 'worried', 'confused', 'lonely',
+                'nervous', 'irritable', 'restless', 'melancholy', 'exhausted'
+              ],
+              default: 'neutral'
+            },
+            date: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The date of the entry'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The last update timestamp'
+            }
+          }
+        }
+      }
+    }
   },
   apis: ['./src/routes/*.js'],
 };

@@ -141,7 +141,33 @@ const journalController = require('../controllers/journalController');
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Journal'
+ *             type: object
+ *             required:
+ *               - title
+ *               - content
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: The title of the journal entry
+ *                 example: "happy hunting"
+ *               content:
+ *                 type: string
+ *                 description: The content of the journal entry
+ *                 example: "we went on a deer hunt today"
+ *               mood:
+ *                 type: string
+ *                 description: The mood associated with the entry
+ *                 enum: [
+ *                   'happy', 'joyful', 'excited', 'enthusiastic', 'grateful', 'peaceful',
+ *                   'content', 'energetic', 'inspired', 'proud', 'optimistic', 'relaxed',
+ *                   'motivated', 'confident', 'cheerful', 'loved', 'blessed', 'accomplished',
+ *                   'neutral', 'calm', 'focused', 'thoughtful', 'contemplative', 'balanced',
+ *                   'mindful', 'present', 'centered', 'curious', 'reflective',
+ *                   'sad', 'angry', 'frustrated', 'anxious', 'stressed', 'tired',
+ *                   'overwhelmed', 'disappointed', 'worried', 'confused', 'lonely',
+ *                   'nervous', 'irritable', 'restless', 'melancholy', 'exhausted'
+ *                 ]
+ *                 example: "excited"
  *     responses:
  *       201:
  *         description: Journal entry created successfully
