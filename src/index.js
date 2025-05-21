@@ -71,11 +71,27 @@ app.use('/api/journal', journalRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Error details:', {
+    message: err.message,
+    stack: err.stack,
+    status: err.status || 500
+  });
+  
   res.status(err.status || 500).json({
     error: {
       message: err.message || 'Internal Server Error',
       status: err.status || 500
+    }
+  });
+});
+
+// 404 handler - must be after all other routes
+app.use((req, res) => {
+  console.log('404 Not Found:', req.method, req.url);
+  res.status(404).json({
+    error: {
+      message: `Cannot ${req.method} ${req.url}`,
+      status: 404
     }
   });
 });
