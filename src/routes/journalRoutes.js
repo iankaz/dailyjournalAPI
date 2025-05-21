@@ -133,6 +133,116 @@ const journalController = require('../controllers/journalController');
  *               properties:
  *                 error:
  *                   type: string
+ *   post:
+ *     summary: Create a new journal entry
+ *     tags: [Journal]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Journal'
+ *     responses:
+ *       201:
+ *         description: Journal entry created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Journal'
+ *       400:
+ *         description: Invalid input
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *       500:
+ *         description: Server error
+ * 
+ * /api/journal/{id}:
+ *   get:
+ *     summary: Get a journal entry by ID
+ *     tags: [Journal]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Journal entry ID
+ *     responses:
+ *       200:
+ *         description: Journal entry found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Journal'
+ *       404:
+ *         description: Journal entry not found
+ *       500:
+ *         description: Server error
+ * 
+ *   put:
+ *     summary: Update a journal entry
+ *     tags: [Journal]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Journal entry ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Journal'
+ *     responses:
+ *       200:
+ *         description: Journal entry updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Journal'
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Journal entry not found
+ *       500:
+ *         description: Server error
+ * 
+ *   delete:
+ *     summary: Delete a journal entry
+ *     tags: [Journal]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Journal entry ID
+ *     responses:
+ *       200:
+ *         description: Journal entry deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       404:
+ *         description: Journal entry not found
+ *       500:
+ *         description: Server error
  */
 
 // Validation middleware
