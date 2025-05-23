@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
+const { body, validationResult, param } = require('express-validator');
+const mongoose = require('mongoose');
 const journalController = require('../controllers/journalController');
 
 /**
@@ -298,11 +299,22 @@ const validateJournalEntry = [
     .withMessage('Invalid mood value')
 ];
 
+// MongoDB ObjectId validation middleware
+const validateObjectId = [
+  param('id')
+    .custom((value) => {
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid journal entry ID');
+      }
+      return true;
+    })
+];
+
 // Routes
 router.get('/', journalController.getAllEntries);
-router.get('/:id', journalController.getEntryById);
+router.get('/:id', validateObjectId, journalController.getEntryById);
 router.post('/', validateJournalEntry, journalController.createEntry);
-router.put('/:id', validateJournalEntry, journalController.updateEntry);
-router.delete('/:id', journalController.deleteEntry);
+router.put('/:id', [...validateObjectId, ...validateJournalEntry], journalController.updateEntry);
+router.delete('/:id', validateObjectId, journalController.deleteEntry);
 
 module.exports = router; 
