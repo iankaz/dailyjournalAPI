@@ -1,0 +1,655 @@
+openapi: 3.0.0
+info:
+  title: Daily Journal API
+  version: 1.0.0
+  description: A simple API for managing daily journal entries and users
+
+servers:
+  - url: https://cse341-rlcp.onrender.com
+    description: Production server
+  - url: http://localhost:3000
+    description: Local development server
+  - url: http://localhost:3001
+    description: Alternative local server (port 3001)
+  - url: http://localhost:3002
+    description: Alternative local server (port 3002)
+  - url: http://localhost:3003
+    description: Alternative local server (port 3003)
+  - url: http://localhost:3004
+    description: Alternative local server (port 3004)
+  - url: http://localhost:3005
+    description: Alternative local server (port 3005)
+
+components:
+  schemas:
+    Journal:
+      type: object
+      required:
+        - title
+        - content
+      properties:
+        _id:
+          type: string
+          description: The auto-generated id of the journal entry
+        title:
+          type: string
+          description: The title of the journal entry
+          maxLength: 100
+        content:
+          type: string
+          description: The content of the journal entry
+        mood:
+          type: string
+          description: The mood associated with the entry
+          enum:
+            # Positive moods
+            - happy
+            - joyful
+            - excited
+            - enthusiastic
+            - grateful
+            - peaceful
+            - content
+            - energetic
+            - inspired
+            - proud
+            - optimistic
+            - relaxed
+            - motivated
+            - confident
+            - cheerful
+            - loved
+            - blessed
+            - accomplished
+            # Neutral moods
+            - neutral
+            - calm
+            - focused
+            - thoughtful
+            - contemplative
+            - balanced
+            - mindful
+            - present
+            - centered
+            - curious
+            - reflective
+            # Challenging moods
+            - sad
+            - angry
+            - frustrated
+            - anxious
+            - stressed
+            - tired
+            - overwhelmed
+            - disappointed
+            - worried
+            - confused
+            - lonely
+            - nervous
+            - irritable
+            - restless
+            - melancholy
+            - exhausted
+          default: neutral
+        date:
+          type: string
+          format: date-time
+          description: The date of the entry
+        createdAt:
+          type: string
+          format: date-time
+          description: The creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: The last update timestamp
+
+    User:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        _id:
+          type: string
+          description: The auto-generated id of the user
+        username:
+          type: string
+          description: The username of the user
+          minLength: 3
+          maxLength: 30
+        email:
+          type: string
+          format: email
+          description: The email address of the user
+        password:
+          type: string
+          description: The password of the user (min 6 characters)
+          minLength: 6
+        createdAt:
+          type: string
+          format: date-time
+          description: The creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: The last update timestamp
+
+paths:
+  /api/journal:
+    get:
+      summary: Returns all journal entries
+      tags:
+        - Journal
+      responses:
+        '200':
+          description: List of journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Journal'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    post:
+      summary: Create a new journal entry
+      tags:
+        - Journal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                  description: The title of the journal entry
+                  maxLength: 100
+                content:
+                  type: string
+                  description: The content of the journal entry
+                mood:
+                  type: string
+                  description: The mood associated with the entry
+                  enum:
+                    # Positive moods
+                    - happy
+                    - joyful
+                    - excited
+                    - enthusiastic
+                    - grateful
+                    - peaceful
+                    - content
+                    - energetic
+                    - inspired
+                    - proud
+                    - optimistic
+                    - relaxed
+                    - motivated
+                    - confident
+                    - cheerful
+                    - loved
+                    - blessed
+                    - accomplished
+                    # Neutral moods
+                    - neutral
+                    - calm
+                    - focused
+                    - thoughtful
+                    - contemplative
+                    - balanced
+                    - mindful
+                    - present
+                    - centered
+                    - curious
+                    - reflective
+                    # Challenging moods
+                    - sad
+                    - angry
+                    - frustrated
+                    - anxious
+                    - stressed
+                    - tired
+                    - overwhelmed
+                    - disappointed
+                    - worried
+                    - confused
+                    - lonely
+                    - nervous
+                    - irritable
+                    - restless
+                    - melancholy
+                    - exhausted
+      responses:
+        '201':
+          description: The created journal entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Journal'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/journal/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The journal entry id
+
+    get:
+      summary: Get a journal entry by id
+      tags:
+        - Journal
+      responses:
+        '200':
+          description: The journal entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Journal'
+        '404':
+          description: Journal entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    put:
+      summary: Update a journal entry
+      tags:
+        - Journal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: The title of the journal entry
+                  maxLength: 100
+                content:
+                  type: string
+                  description: The content of the journal entry
+                mood:
+                  type: string
+                  description: The mood associated with the entry
+                  enum:
+                    # Positive moods
+                    - happy
+                    - joyful
+                    - excited
+                    - enthusiastic
+                    - grateful
+                    - peaceful
+                    - content
+                    - energetic
+                    - inspired
+                    - proud
+                    - optimistic
+                    - relaxed
+                    - motivated
+                    - confident
+                    - cheerful
+                    - loved
+                    - blessed
+                    - accomplished
+                    # Neutral moods
+                    - neutral
+                    - calm
+                    - focused
+                    - thoughtful
+                    - contemplative
+                    - balanced
+                    - mindful
+                    - present
+                    - centered
+                    - curious
+                    - reflective
+                    # Challenging moods
+                    - sad
+                    - angry
+                    - frustrated
+                    - anxious
+                    - stressed
+                    - tired
+                    - overwhelmed
+                    - disappointed
+                    - worried
+                    - confused
+                    - lonely
+                    - nervous
+                    - irritable
+                    - restless
+                    - melancholy
+                    - exhausted
+      responses:
+        '200':
+          description: The updated journal entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Journal'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: Journal entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    delete:
+      summary: Delete a journal entry
+      tags:
+        - Journal
+      responses:
+        '200':
+          description: Journal entry deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: Journal entry not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/users:
+    get:
+      summary: Returns all users
+      tags:
+        - Users
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    post:
+      summary: Create a new user
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  description: The username of the user
+                  minLength: 3
+                  maxLength: 30
+                email:
+                  type: string
+                  format: email
+                  description: The email address of the user
+                password:
+                  type: string
+                  description: The password of the user (min 6 characters)
+                  minLength: 6
+      responses:
+        '201':
+          description: The created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The user id
+
+    get:
+      summary: Get a user by id
+      tags:
+        - Users
+      responses:
+        '200':
+          description: The user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    put:
+      summary: Update a user
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: The username of the user
+                  minLength: 3
+                  maxLength: 30
+                email:
+                  type: string
+                  format: email
+                  description: The email address of the user
+                password:
+                  type: string
+                  description: The password of the user (min 6 characters)
+                  minLength: 6
+      responses:
+        '200':
+          description: The updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+    delete:
+      summary: Delete a user
+      tags:
+        - Users
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string 

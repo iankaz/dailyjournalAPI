@@ -5,6 +5,7 @@ const swaggerJsDoc = require('swagger-jsdoc');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const journalRoutes = require('./routes/journalRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const DEFAULT_PORT = process.env.PORT || 3000;
@@ -28,11 +29,20 @@ app.get('/', (req, res) => {
   res.json({
     message: "Welcome to the Daily Journal API",
     endpoints: {
-      getAllEntries: "/api/journal",
-      getSingleEntry: "/api/journal/:id",
-      createEntry: "/api/journal (POST)",
-      updateEntry: "/api/journal/:id (PUT)",
-      deleteEntry: "/api/journal/:id (DELETE)",
+      journal: {
+        getAllEntries: "/api/journal",
+        getSingleEntry: "/api/journal/:id",
+        createEntry: "/api/journal (POST)",
+        updateEntry: "/api/journal/:id (PUT)",
+        deleteEntry: "/api/journal/:id (DELETE)"
+      },
+      users: {
+        getAllUsers: "/api/users",
+        getSingleUser: "/api/users/:id",
+        createUser: "/api/users (POST)",
+        updateUser: "/api/users/:id (PUT)",
+        deleteUser: "/api/users/:id (DELETE)"
+      },
       documentation: "/api-docs"
     }
   });
@@ -109,6 +119,42 @@ const swaggerOptions = {
               description: 'The last update timestamp'
             }
           }
+        },
+        User: {
+          type: 'object',
+          required: ['username', 'email', 'password'],
+          properties: {
+            _id: {
+              type: 'string',
+              description: 'The auto-generated id of the user'
+            },
+            username: {
+              type: 'string',
+              description: 'The username of the user',
+              minLength: 3,
+              maxLength: 30
+            },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'The email address of the user'
+            },
+            password: {
+              type: 'string',
+              description: 'The password of the user (min 6 characters)',
+              minLength: 6
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'The last update timestamp'
+            }
+          }
         }
       }
     }
@@ -121,6 +167,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 // Routes
 app.use('/api/journal', journalRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
