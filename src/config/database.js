@@ -11,16 +11,21 @@ const connectDB = async () => {
     
     console.log('Environment:', process.env.NODE_ENV);
     console.log('Attempting to connect to MongoDB...');
-    console.log('MongoDB URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@')); // Hide credentials in logs
     
     const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 30000, // Increased timeout
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000, // Added connection timeout
+      retryWrites: true,
+      w: 'majority'
     };
     
+    // Try to connect to MongoDB
     await mongoose.connect(MONGODB_URI, options);
+    
+    // If we get here, connection was successful
     console.log('Connected to MongoDB successfully');
     console.log('Using database:', mongoose.connection.name);
     
@@ -47,8 +52,17 @@ const connectDB = async () => {
     
   } catch (error) {
     console.error('MongoDB connection error:', error);
-    console.log('Please make sure MongoDB is running and the connection string is correct.');
-    console.log('You can set the MONGODB_URI in your .env file or use the default local connection.');
+    console.log('\nTroubleshooting steps:');
+    console.log('1. Check if your MongoDB URI is correct in .env file');
+    console.log('2. If using MongoDB Atlas:');
+    console.log('   - Verify your IP address is whitelisted');
+    console.log('   - Check if your username and password are correct');
+    console.log('   - Ensure your cluster is running');
+    console.log('3. If using local MongoDB:');
+    console.log('   - Make sure MongoDB service is running');
+    console.log('   - Check if the port is correct (default: 27017)');
+    console.log('\nYour current MONGODB_URI (with credentials hidden):');
+    console.log(process.env.MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//****:****@'));
     process.exit(1);
   }
 };

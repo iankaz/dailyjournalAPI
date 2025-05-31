@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const userController = require('../controllers/userController');
+const auth = require('../middleware/auth');
 
 // Validation middleware
 const validateUser = [
@@ -26,12 +27,24 @@ const validateUser = [
     .withMessage('Password must be at least 6 characters long')
 ];
 
+// Middleware to handle validation results
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
 /**
  * @swagger
  * /api/users:
  *   get:
  *     summary: Get all users
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of users
@@ -41,10 +54,14 @@ const validateUser = [
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-router.get('/', userController.getAllUsers);
+router.route('/')
+  .get(auth, userController.getAllUsers)
+  .post(validateUser, handleValidationErrors, userController.createUser);
 
 /**
  * @swagger
@@ -52,6 +69,8 @@ router.get('/', userController.getAllUsers);
  *   get:
  *     summary: Get a user by ID
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -66,95 +85,16 @@ router.get('/', userController.getAllUsers);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: User not found
  *       500:
  *         description: Server error
  */
-router.get('/:id', userController.getUserById);
-
-/**
- * @swagger
- * /api/users:
- *   post:
- *     summary: Create a new user
- *     tags: [Users]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       201:
- *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       400:
- *         description: Validation error
- *       500:
- *         description: Server error
- */
-router.post('/', validateUser, userController.createUser);
-
-/**
- * @swagger
- * /api/users/{id}:
- *   put:
- *     summary: Update a user
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/User'
- *     responses:
- *       200:
- *         description: User updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
- *       400:
- *         description: Validation error
- *       404:
- *         description: User not found
- *       500:
- *         description: Server error
- */
-router.put('/:id', validateUser, userController.updateUser);
-
-/**
- * @swagger
- * /api/users/{id}:
- *   delete:
- *     summary: Delete a user
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
- *     responses:
- *       200:
- *         description: User deleted successfully
- *       404:
- *         description: User not found
- *       500:
- *         description: Server error
- */
-router.delete('/:id', userController.deleteUser);
+router.route('/:id')
+  .get(auth, userController.getUserById)
+  .put(auth, validateUser, handleValidationErrors, userController.updateUser)
+  .delete(auth, userController.deleteUser);
 
 module.exports = router; 

@@ -3,6 +3,7 @@ const router = express.Router();
 const { body, validationResult, param } = require('express-validator');
 const mongoose = require('mongoose');
 const journalController = require('../controllers/journalController');
+const auth = require('../middleware/auth');
 
 /**
  * @swagger
@@ -114,8 +115,10 @@ const journalController = require('../controllers/journalController');
  * @swagger
  * /api/journal:
  *   get:
- *     summary: Returns all journal entries
+ *     summary: Get all journal entries
  *     tags: [Journal]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of journal entries
@@ -125,18 +128,15 @@ const journalController = require('../controllers/journalController');
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Journal'
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
  *   post:
  *     summary: Create a new journal entry
  *     tags: [Journal]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -177,19 +177,9 @@ const journalController = require('../controllers/journalController');
  *             schema:
  *               $ref: '#/components/schemas/Journal'
  *       400:
- *         description: Invalid input
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 errors:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       msg:
- *                         type: string
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Server error
  * 
@@ -197,6 +187,8 @@ const journalController = require('../controllers/journalController');
  *   get:
  *     summary: Get a journal entry by ID
  *     tags: [Journal]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -211,6 +203,8 @@ const journalController = require('../controllers/journalController');
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Journal'
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Journal entry not found
  *       500:
@@ -219,6 +213,8 @@ const journalController = require('../controllers/journalController');
  *   put:
  *     summary: Update a journal entry
  *     tags: [Journal]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -240,7 +236,9 @@ const journalController = require('../controllers/journalController');
  *             schema:
  *               $ref: '#/components/schemas/Journal'
  *       400:
- *         description: Invalid input
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Journal entry not found
  *       500:
@@ -249,6 +247,8 @@ const journalController = require('../controllers/journalController');
  *   delete:
  *     summary: Delete a journal entry
  *     tags: [Journal]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -259,13 +259,8 @@ const journalController = require('../controllers/journalController');
  *     responses:
  *       200:
  *         description: Journal entry deleted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Journal entry not found
  *       500:
@@ -273,13 +268,13 @@ const journalController = require('../controllers/journalController');
  */
 
 // Validation middleware
-const validateJournalEntry = [
+const validateJournal = [
   body('title')
     .trim()
     .notEmpty()
     .withMessage('Title is required')
     .isLength({ max: 100 })
-    .withMessage('Title cannot be more than 100 characters'),
+    .withMessage('Title must be less than 100 characters'),
   body('content')
     .trim()
     .notEmpty()
@@ -310,11 +305,24 @@ const validateObjectId = [
     })
 ];
 
+// Middleware to handle validation results
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log('Validation errors:', errors.array());
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
 // Routes
-router.get('/', journalController.getAllEntries);
-router.get('/:id', validateObjectId, journalController.getEntryById);
-router.post('/', validateJournalEntry, journalController.createEntry);
-router.put('/:id', [...validateObjectId, ...validateJournalEntry], journalController.updateEntry);
-router.delete('/:id', validateObjectId, journalController.deleteEntry);
+router.route('/')
+  .get(auth, journalController.getAllEntries)
+  .post(auth, validateJournal, handleValidationErrors, journalController.createEntry);
+
+router.route('/:id')
+  .get(auth, validateObjectId, journalController.getEntryById)
+  .put(auth, [...validateObjectId, ...validateJournal], handleValidationErrors, journalController.updateEntry)
+  .delete(auth, validateObjectId, journalController.deleteEntry);
 
 module.exports = router; 

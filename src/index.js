@@ -3,9 +3,12 @@ const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsDoc = require('swagger-jsdoc');
 const cors = require('cors');
+const passport = require('passport');
 const connectDB = require('./config/database');
 const journalRoutes = require('./routes/journalRoutes');
 const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+require('./config/passport');
 
 const app = express();
 const DEFAULT_PORT = process.env.PORT || 3000;
@@ -23,6 +26,7 @@ const corsOptions = {
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(passport.initialize());
 
 // Root route
 app.get('/', (req, res) => {
@@ -42,6 +46,11 @@ app.get('/', (req, res) => {
         createUser: "/api/users (POST)",
         updateUser: "/api/users/:id (PUT)",
         deleteUser: "/api/users/:id (DELETE)"
+      },
+      auth: {
+        register: "/api/auth/register (POST)",
+        login: "/api/auth/login (POST)",
+        logout: "/api/auth/logout (POST)"
       },
       documentation: "/api-docs"
     }
@@ -156,6 +165,13 @@ const swaggerOptions = {
             }
           }
         }
+      },
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
       }
     }
   },
@@ -168,6 +184,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 // Routes
 app.use('/api/journal', journalRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -198,53 +215,18 @@ app.use((req, res) => {
 
 // Function to try starting server on different ports
 const startServer = (port) => {
-  return new Promise((resolve, reject) => {
-    const server = app.listen(port)
-      .once('listening', () => {
-        console.log(`Server is running on port ${port}`);
-        console.log(`API Documentation available at http://localhost:${port}/api-docs`);
-        resolve(server);
-      })
-      .once('error', (err) => {
-        if (err.code === 'EADDRINUSE') {
-          console.log(`Port ${port} is in use, trying next port...`);
-          reject(err);
-        } else {
-          console.error('Server error:', err);
-          reject(err);
-        }
-      });
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying another port...`);
+      const nextPort = ALTERNATIVE_PORTS.find(p => p > port) || DEFAULT_PORT;
+      startServer(nextPort);
+    } else {
+      console.error('Server error:', err);
+    }
   });
 };
 
-// Start the application
-const startApp = async () => {
-  try {
-    // Connect to MongoDB
-    await connectDB();
-    
-    // Try to start server on default port
-    await startServer(DEFAULT_PORT)
-      .catch(() => {
-        // If default port fails, try alternative ports
-        const tryNextPort = async (ports) => {
-          if (ports.length === 0) {
-            console.error('All ports are in use. Please free up a port or specify a different port in .env file.');
-            process.exit(1);
-          }
-          try {
-            await startServer(ports[0]);
-          } catch (err) {
-            console.log(`Trying port ${ports[1]}...`);
-            await tryNextPort(ports.slice(1));
-          }
-        };
-        tryNextPort(ALTERNATIVE_PORTS);
-      });
-  } catch (error) {
-    console.error('Application startup error:', error);
-    process.exit(1);
-  }
-};
-
-startApp(); 
+// Start the server
+startServer(DEFAULT_PORT); 

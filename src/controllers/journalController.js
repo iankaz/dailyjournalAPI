@@ -1,10 +1,10 @@
-const Journal = require('../models/Journal');
+const { getAllJournals, getJournalById, createJournal, updateJournal, deleteJournal } = require('../data/journals');
 
 // Get all journal entries
 exports.getAllEntries = async (req, res) => {
   try {
     console.log('Fetching all journal entries');
-    const entries = await Journal.find().sort({ date: -1 });
+    const entries = getAllJournals();
     console.log(`Found ${entries.length} entries`);
     res.json(entries);
   } catch (error) {
@@ -17,7 +17,7 @@ exports.getAllEntries = async (req, res) => {
 exports.getEntryById = async (req, res) => {
   try {
     console.log(`Fetching journal entry with id: ${req.params.id}`);
-    const entry = await Journal.findById(req.params.id);
+    const entry = getJournalById(req.params.id);
     if (!entry) {
       console.log('Entry not found');
       return res.status(404).json({ error: 'Journal entry not found' });
@@ -34,8 +34,10 @@ exports.getEntryById = async (req, res) => {
 exports.createEntry = async (req, res) => {
   try {
     console.log('Creating new journal entry:', req.body);
-    const entry = new Journal(req.body);
-    await entry.save();
+    const entry = createJournal({
+      ...req.body,
+      userId: req.user.id // Associate entry with the authenticated user
+    });
     console.log('Entry created successfully:', entry);
     res.status(201).json(entry);
   } catch (error) {
@@ -50,12 +52,7 @@ exports.updateEntry = async (req, res) => {
     console.log(`Updating journal entry with id: ${req.params.id}`);
     console.log('Update data:', req.body);
     
-    const entry = await Journal.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
+    const entry = updateJournal(req.params.id, req.body);
     if (!entry) {
       console.log('Entry not found for update');
       return res.status(404).json({ error: 'Journal entry not found' });
@@ -73,8 +70,8 @@ exports.updateEntry = async (req, res) => {
 exports.deleteEntry = async (req, res) => {
   try {
     console.log(`Deleting journal entry with id: ${req.params.id}`);
-    const entry = await Journal.findByIdAndDelete(req.params.id);
-    if (!entry) {
+    const success = deleteJournal(req.params.id);
+    if (!success) {
       console.log('Entry not found for deletion');
       return res.status(404).json({ error: 'Journal entry not found' });
     }
