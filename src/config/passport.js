@@ -51,7 +51,7 @@ passport.use(new LocalStrategy(
 passport.use(new GitHubStrategy({
   clientID: process.env.GITHUB_CLIENT_ID,
   clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  callbackURL: process.env.GITHUB_CALLBACK_URL
+  callbackURL: process.env.GITHUB_CALLBACK_URL || 'https://dailyjournal-api.onrender.com/api/auth/github/callback'
 },
 async (accessToken, refreshToken, profile, done) => {
   try {
