@@ -17,7 +17,11 @@ const ALTERNATIVE_PORTS = [3001, 3002, 3003, 3004, 3005];
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://dailyjournal-api.onrender.com'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -66,7 +70,7 @@ const swaggerOptions = {
     servers: [
       {
         url: process.env.NODE_ENV === 'production' 
-          ? 'https://cse341-rlcp.onrender.com'
+          ? 'https://dailyjournal-api.onrender.com'
           : `http://localhost:${DEFAULT_PORT}`,
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       },
@@ -220,7 +224,11 @@ const startServer = async (port) => {
     // Then start the server
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
-      console.log(`API Documentation available at http://localhost:${port}/api-docs`);
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`API Documentation available at https://dailyjournal-api.onrender.com/api-docs`);
+      } else {
+        console.log(`API Documentation available at http://localhost:${port}/api-docs`);
+      }
     });
   } catch (error) {
     console.error('Failed to start server:', error);

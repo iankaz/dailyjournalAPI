@@ -224,7 +224,8 @@ router.get('/github',
 router.get('/github/callback',
   passport.authenticate('github', { 
     failureRedirect: '/login',
-    session: false
+    session: false,
+    failWithError: true
   }),
   (req, res) => {
     const token = generateToken(req.user);
@@ -232,6 +233,13 @@ router.get('/github/callback',
       message: 'GitHub authentication successful',
       token,
       user: req.user.getPublicProfile()
+    });
+  },
+  (err, req, res, next) => {
+    console.error('GitHub authentication error:', err);
+    res.status(401).json({
+      message: 'GitHub authentication failed',
+      error: err.message
     });
   }
 );

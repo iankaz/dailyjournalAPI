@@ -19,7 +19,8 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       connectTimeoutMS: 30000, // Added connection timeout
       retryWrites: true,
-      w: 'majority'
+      w: 'majority',
+      dbName: 'dailyjournal' // Explicitly set the database name
     };
     
     // Try to connect to MongoDB
