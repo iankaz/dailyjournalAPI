@@ -1,6 +1,23 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const { findUserByEmail, findUserByUsername, addUser } = require('../data/users');
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
+
+// Generate tokens
+const generateTokens = (user) => {
+  const accessToken = jwt.sign(
+    { id: user._id },
+    process.env.JWT_SECRET || 'your-secret-key',
+    { expiresIn: '1h' }
+  );
+
+  const refreshToken = jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+    { expiresIn: '7d' }
+  );
+
+  return { accessToken, refreshToken };
+};
 
 // Register a new user
 exports.register = async (req, res) => {
@@ -8,36 +25,34 @@ exports.register = async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
-    if (findUserByEmail(email) || findUserByUsername(username)) {
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }]
+    });
+
+    if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
     // Create new user
-    const user = {
-      id: Date.now().toString(), // Simple ID generation
+    const user = new User({
       username,
       email,
-      password: hashedPassword,
-      createdAt: new Date()
-    };
+      password
+    });
 
-    // Add user to store
-    addUser(user);
+    await user.save();
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1d' });
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+
+    // Save refresh token
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(201).json({
-      user: {
-        id: user.id,
-        username,
-        email
-      },
-      token
+      user: user.getPublicProfile(),
+      accessToken,
+      refreshToken
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -51,27 +66,32 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Find user by email
-    const user = findUserByEmail(email);
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1d' });
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(user);
+
+    // Save refresh token
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        email
-      },
-      token
+      user: user.getPublicProfile(),
+      accessToken,
+      refreshToken
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -79,7 +99,88 @@ exports.login = async (req, res) => {
   }
 };
 
-// Logout user (client-side token removal)
-exports.logout = (req, res) => {
-  res.json({ message: 'Logged out successfully' });
+// Refresh token
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key');
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    // Generate new tokens
+    const tokens = generateTokens(user);
+
+    // Update refresh token
+    user.refreshToken = tokens.refreshToken;
+    await user.save();
+
+    res.json({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({ error: 'Invalid refresh token' });
+  }
+};
+
+// Logout user
+exports.logout = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get current user
+exports.getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user.getPublicProfile());
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Google OAuth callback
+exports.googleCallback = async (req, res) => {
+  try {
+    // Generate tokens
+    const { accessToken, refreshToken } = generateTokens(req.user);
+
+    // Save refresh token
+    req.user.refreshToken = refreshToken;
+    await req.user.save();
+
+    // Redirect to frontend with tokens
+    res.redirect(
+      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?` +
+      `accessToken=${accessToken}&refreshToken=${refreshToken}`
+    );
+  } catch (error) {
+    console.error('Google callback error:', error);
+    res.redirect(
+      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=Authentication failed`
+    );
+  }
 }; 

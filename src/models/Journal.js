@@ -3,13 +3,13 @@ const mongoose = require('mongoose');
 const journalSchema = new mongoose.Schema({
   title: {
     type: String,
-    required: [true, 'Title is required'],
+    required: true,
     trim: true,
-    maxlength: [100, 'Title cannot be more than 100 characters']
+    maxlength: 100
   },
   content: {
     type: String,
-    required: [true, 'Content is required'],
+    required: true,
     trim: true
   },
   mood: {
@@ -34,9 +34,19 @@ const journalSchema = new mongoose.Schema({
   date: {
     type: Date,
     default: Date.now
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   }
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('Journal', journalSchema); 
+// Add index for faster queries
+journalSchema.index({ userId: 1, date: -1 });
+
+const Journal = mongoose.model('Journal', journalSchema);
+
+module.exports = Journal; 

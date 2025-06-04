@@ -95,6 +95,9 @@ components:
           type: string
           format: date-time
           description: The date of the entry
+        userId:
+          type: string
+          description: The ID of the user who created the entry
         createdAt:
           type: string
           format: date-time
@@ -109,7 +112,6 @@ components:
       required:
         - username
         - email
-        - password
       properties:
         _id:
           type: string
@@ -130,6 +132,35 @@ components:
         googleId:
           type: string
           description: Google OAuth ID for the user
+        githubId:
+          type: string
+          description: GitHub OAuth ID for the user
+        role:
+          type: string
+          enum: [user, admin]
+          default: user
+          description: The role of the user
+        isActive:
+          type: boolean
+          default: true
+          description: Whether the user account is active
+        lastLogin:
+          type: string
+          format: date-time
+          description: The last login timestamp
+        preferences:
+          type: object
+          properties:
+            theme:
+              type: string
+              enum: [light, dark]
+              default: light
+            notifications:
+              type: boolean
+              default: true
+            language:
+              type: string
+              default: en
         createdAt:
           type: string
           format: date-time
@@ -142,35 +173,40 @@ components:
     AuthResponse:
       type: object
       properties:
+        message:
+          type: string
         token:
           type: string
-          description: JWT token for authenticated user
         user:
-          type: object
-          properties:
-            id:
-              type: string
-            username:
-              type: string
-            email:
-              type: string
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - user
 
     Error:
       type: object
       properties:
         error:
-          type: object
-          properties:
-            message:
-              type: string
-            status:
-              type: number
+          type: string
+        message:
+          type: string
+      required:
+        - error
 
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    githubAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://github.com/login/oauth/authorize
+          tokenUrl: https://github.com/login/oauth/access_token
+          scopes:
+            user:email: Read user email
+            read:user: Read user profile
 
 paths:
   /api/auth/register:
@@ -190,16 +226,13 @@ paths:
               properties:
                 username:
                   type: string
-                  description: The username of the user
                   minLength: 3
                   maxLength: 30
                 email:
                   type: string
                   format: email
-                  description: The email address of the user
                 password:
                   type: string
-                  description: The password of the user
                   minLength: 6
       responses:
         '201':
@@ -214,8 +247,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
+        '409':
+          description: User already exists
           content:
             application/json:
               schema:
@@ -238,32 +271,17 @@ paths:
                 email:
                   type: string
                   format: email
-                  description: The email address of the user
                 password:
                   type: string
-                  description: The password of the user
-                  minLength: 6
       responses:
         '200':
-          description: User logged in successfully
+          description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
           description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
           content:
             application/json:
               schema:
@@ -271,50 +289,51 @@ paths:
 
   /api/auth/google:
     get:
-      summary: Initiate Google OAuth2 login flow
+      summary: Authenticate with Google
       tags: [Auth]
-      description: Redirects to Google's OAuth consent screen for authentication
       responses:
         '302':
-          description: Redirect to Google OAuth login page
-          headers:
-            Location:
-              schema:
-                type: string
-                example: https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=...
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Redirect to Google login
 
   /api/auth/google/callback:
     get:
-      summary: Google OAuth2 callback URL
+      summary: Google OAuth callback
       tags: [Auth]
-      description: Handles the callback from Google OAuth after successful authentication
-      parameters:
-        - in: query
-          name: code
-          schema:
-            type: string
-          description: Authorization code from Google
       responses:
         '200':
-          description: Successful authentication, returns JWT token
+          description: Google authentication successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Authentication failed
+          description: Google authentication failed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
+
+  /api/auth/github:
+    get:
+      summary: Authenticate with GitHub
+      tags: [Auth]
+      responses:
+        '302':
+          description: Redirect to GitHub login
+
+  /api/auth/github/callback:
+    get:
+      summary: GitHub OAuth callback
+      tags: [Auth]
+      responses:
+        '200':
+          description: GitHub authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: GitHub authentication failed
           content:
             application/json:
               schema:
@@ -322,11 +341,13 @@ paths:
 
   /api/auth/logout:
     post:
-      summary: Logout user (client-side token removal)
+      summary: Logout user
       tags: [Auth]
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: User logged out successfully
+          description: Logout successful
           content:
             application/json:
               schema:
@@ -334,8 +355,34 @@ paths:
                 properties:
                   message:
                     type: string
-        '500':
-          description: Server error
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/me:
+    get:
+      summary: Get current user
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -357,13 +404,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Journal'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
+          description: Authentication required
           content:
             application/json:
               schema:
@@ -386,14 +427,131 @@ paths:
               properties:
                 title:
                   type: string
-                  description: The title of the journal entry
                   maxLength: 100
                 content:
                   type: string
-                  description: The content of the journal entry
                 mood:
                   type: string
-                  description: The mood associated with the entry
+                  enum:
+                    - happy
+                    - joyful
+                    - excited
+                    - enthusiastic
+                    - grateful
+                    - peaceful
+                    - content
+                    - energetic
+                    - inspired
+                    - proud
+                    - optimistic
+                    - relaxed
+                    - motivated
+                    - confident
+                    - cheerful
+                    - loved
+                    - blessed
+                    - accomplished
+                    - neutral
+                    - calm
+                    - focused
+                    - thoughtful
+                    - contemplative
+                    - balanced
+                    - mindful
+                    - present
+                    - centered
+                    - curious
+                    - reflective
+                    - sad
+                    - angry
+                    - frustrated
+                    - anxious
+                    - stressed
+                    - tired
+                    - overwhelmed
+                    - disappointed
+                    - worried
+                    - confused
+                    - lonely
+                    - nervous
+                    - irritable
+                    - restless
+                    - melancholy
+                    - exhausted
+                  default: neutral
+      responses:
+        '201':
+          description: Journal entry created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Journal'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/journal/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Journal entry ID
+
+    get:
+      summary: Get a journal entry by ID
+      tags: [Journal]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Journal entry retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Journal'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Journal entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update a journal entry
+      tags: [Journal]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+                content:
+                  type: string
+                mood:
+                  type: string
                   enum:
                     - happy
                     - joyful
@@ -441,83 +599,6 @@ paths:
                     - melancholy
                     - exhausted
       responses:
-        '201':
-          description: Journal entry created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Journal'
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /api/journal/{id}:
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-        description: Journal entry ID
-
-    get:
-      summary: Get a journal entry by ID
-      tags: [Journal]
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Journal entry found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Journal'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Journal entry not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-    put:
-      summary: Update a journal entry
-      tags: [Journal]
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Journal'
-      responses:
         '200':
           description: Journal entry updated successfully
           content:
@@ -531,19 +612,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '401':
-          description: Unauthorized
+          description: Authentication required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Journal entry not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
           content:
             application/json:
               schema:
@@ -565,19 +640,13 @@ paths:
                   message:
                     type: string
         '401':
-          description: Unauthorized
+          description: Authentication required
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '404':
           description: Journal entry not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Server error
           content:
             application/json:
               schema:

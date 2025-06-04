@@ -9,22 +9,19 @@ const journalRoutes = require('./routes/journalRoutes');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 require('./config/passport');
+const specs = require('./swagger');
 
 const app = express();
 const DEFAULT_PORT = process.env.PORT || 3000;
 const ALTERNATIVE_PORTS = [3001, 3002, 3003, 3004, 3005];
 
 // CORS configuration
-const corsOptions = {
-  origin: '*', // Allow all origins
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
-  optionsSuccessStatus: 200
-};
-
-// Middleware
-app.use(cors(corsOptions));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(passport.initialize());
 
@@ -179,7 +176,11 @@ const swaggerOptions = {
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "Daily Journal API Documentation"
+}));
 
 // Routes
 app.use('/api/journal', journalRoutes);
@@ -195,10 +196,7 @@ app.use((err, req, res, next) => {
   });
   
   res.status(err.status || 500).json({
-    error: {
-      message: err.message || 'Internal Server Error',
-      status: err.status || 500
-    }
+    error: err.message || 'Internal Server Error'
   });
 });
 
@@ -213,20 +211,37 @@ app.use((req, res) => {
   });
 });
 
-// Function to try starting server on different ports
-const startServer = (port) => {
-  app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-  }).on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-      console.log(`Port ${port} is busy, trying another port...`);
-      const nextPort = ALTERNATIVE_PORTS.find(p => p > port) || DEFAULT_PORT;
-      startServer(nextPort);
+// Start server function
+const startServer = async (port) => {
+  try {
+    // Connect to MongoDB first
+    await connectDB();
+    
+    // Then start the server
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+      console.log(`API Documentation available at http://localhost:${port}/api-docs`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Try to start server on default port, fall back to alternative ports if needed
+const tryStartServer = async (port, alternativePorts) => {
+  try {
+    await startServer(port);
+  } catch (error) {
+    if (alternativePorts.length > 0) {
+      console.log(`Port ${port} is in use, trying port ${alternativePorts[0]}...`);
+      await tryStartServer(alternativePorts[0], alternativePorts.slice(1));
     } else {
-      console.error('Server error:', err);
+      console.error('All ports are in use. Please free up a port and try again.');
+      process.exit(1);
     }
-  });
+  }
 };
 
 // Start the server
-startServer(DEFAULT_PORT); 
+tryStartServer(DEFAULT_PORT, ALTERNATIVE_PORTS); 

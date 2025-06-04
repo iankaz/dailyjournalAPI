@@ -3,7 +3,14 @@ const router = express.Router();
 const { body, validationResult, param } = require('express-validator');
 const mongoose = require('mongoose');
 const journalController = require('../controllers/journalController');
-const auth = require('../middleware/auth');
+const { authenticateJWT } = require('../middleware/auth');
+const { 
+  findById, 
+  findByUserId, 
+  create, 
+  update, 
+  remove 
+} = require('../data/journalEntries');
 
 /**
  * @swagger
@@ -317,12 +324,12 @@ const handleValidationErrors = (req, res, next) => {
 
 // Routes
 router.route('/')
-  .get(auth, journalController.getAllEntries)
-  .post(auth, validateJournal, handleValidationErrors, journalController.createEntry);
+  .get(authenticateJWT, journalController.getAllEntries)
+  .post(authenticateJWT, validateJournal, handleValidationErrors, journalController.createEntry);
 
 router.route('/:id')
-  .get(auth, validateObjectId, journalController.getEntryById)
-  .put(auth, [...validateObjectId, ...validateJournal], handleValidationErrors, journalController.updateEntry)
-  .delete(auth, validateObjectId, journalController.deleteEntry);
+  .get(authenticateJWT, validateObjectId, journalController.getEntryById)
+  .put(authenticateJWT, [...validateObjectId, ...validateJournal], handleValidationErrors, journalController.updateEntry)
+  .delete(authenticateJWT, validateObjectId, journalController.deleteEntry);
 
 module.exports = router; 
