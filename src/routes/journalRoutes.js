@@ -11,6 +11,7 @@ const {
   update, 
   remove 
 } = require('../data/journalEntries');
+const Journal = require('../models/Journal');
 
 /**
  * @swagger
@@ -104,18 +105,6 @@ const {
  * servers:
  *   - url: https://cse341-rlcp.onrender.com
  *     description: Production server
- *   - url: http://localhost:3000
- *     description: Local development server
- *   - url: http://localhost:3001
- *     description: Alternative local server (port 3001)
- *   - url: http://localhost:3002
- *     description: Alternative local server (port 3002)
- *   - url: http://localhost:3003
- *     description: Alternative local server (port 3003)
- *   - url: http://localhost:3004
- *     description: Alternative local server (port 3004)
- *   - url: http://localhost:3005
- *     description: Alternative local server (port 3005)
  */
 
 /**
@@ -324,12 +313,68 @@ const handleValidationErrors = (req, res, next) => {
 
 // Routes
 router.route('/')
-  .get(authenticateJWT, journalController.getAllEntries)
-  .post(authenticateJWT, validateJournal, handleValidationErrors, journalController.createEntry);
+  .get(authenticateJWT, async (req, res) => {
+    try {
+      const entries = await Journal.find({ userId: req.user._id });
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching journal entries', error: error.message });
+    }
+  })
+  .post(authenticateJWT, validateJournal, handleValidationErrors, async (req, res) => {
+    try {
+      const { title, content, mood } = req.body;
+      const entry = new Journal({
+        title,
+        content,
+        mood,
+        userId: req.user._id
+      });
+      await entry.save();
+      res.status(201).json(entry);
+    } catch (error) {
+      res.status(500).json({ message: 'Error creating journal entry', error: error.message });
+    }
+  });
 
 router.route('/:id')
-  .get(authenticateJWT, validateObjectId, journalController.getEntryById)
-  .put(authenticateJWT, [...validateObjectId, ...validateJournal], handleValidationErrors, journalController.updateEntry)
-  .delete(authenticateJWT, validateObjectId, journalController.deleteEntry);
+  .get(authenticateJWT, validateObjectId, async (req, res) => {
+    try {
+      const entry = await Journal.findOne({ _id: req.params.id, userId: req.user._id });
+      if (!entry) {
+        return res.status(404).json({ message: 'Journal entry not found' });
+      }
+      res.json(entry);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching journal entry', error: error.message });
+    }
+  })
+  .put(authenticateJWT, [...validateObjectId, ...validateJournal], handleValidationErrors, async (req, res) => {
+    try {
+      const { title, content, mood } = req.body;
+      const entry = await Journal.findOneAndUpdate(
+        { _id: req.params.id, userId: req.user._id },
+        { title, content, mood },
+        { new: true }
+      );
+      if (!entry) {
+        return res.status(404).json({ message: 'Journal entry not found' });
+      }
+      res.json(entry);
+    } catch (error) {
+      res.status(500).json({ message: 'Error updating journal entry', error: error.message });
+    }
+  })
+  .delete(authenticateJWT, validateObjectId, async (req, res) => {
+    try {
+      const entry = await Journal.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
+      if (!entry) {
+        return res.status(404).json({ message: 'Journal entry not found' });
+      }
+      res.json({ message: 'Journal entry deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Error deleting journal entry', error: error.message });
+    }
+  });
 
 module.exports = router; 
