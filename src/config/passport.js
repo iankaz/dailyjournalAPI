@@ -55,9 +55,16 @@ passport.use(new GitHubStrategy({
 },
 async (accessToken, refreshToken, profile, done) => {
   try {
+    console.log('GitHub strategy called with profile:', {
+      id: profile.id,
+      username: profile.username,
+      emails: profile.emails
+    });
+    
     let user = await User.findOne({ githubId: profile.id });
     
     if (!user) {
+      console.log('Creating new user from GitHub profile');
       // Check if this is the first user
       const userCount = await User.countDocuments();
       const role = userCount === 0 ? 'admin' : 'user'; // First user becomes admin
@@ -76,10 +83,14 @@ async (accessToken, refreshToken, profile, done) => {
           language: 'en'
         }
       });
+      console.log('New user created:', user._id);
+    } else {
+      console.log('Existing user found:', user._id);
     }
     
     return done(null, user);
   } catch (error) {
+    console.error('Error in GitHub strategy:', error);
     return done(error, null);
   }
 }));

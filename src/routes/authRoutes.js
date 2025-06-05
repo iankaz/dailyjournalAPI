@@ -203,10 +203,13 @@ router.post('/login', async (req, res, next) => {
  *         description: Redirect to GitHub login
  */
 router.get('/github',
-  passport.authenticate('github', { 
-    scope: ['user:email'],
-    session: false
-  })
+  (req, res, next) => {
+    console.log('GitHub login route accessed');
+    passport.authenticate('github', { 
+      scope: ['user:email'],
+      session: false
+    })(req, res, next);
+  }
 );
 
 /**
@@ -222,13 +225,17 @@ router.get('/github',
  *         description: GitHub authentication failed
  */
 router.get('/github/callback',
-  passport.authenticate('github', { 
-    failureRedirect: '/login',
-    session: false,
-    failWithError: true
-  }),
+  (req, res, next) => {
+    console.log('GitHub callback route accessed with query:', req.query);
+    passport.authenticate('github', { 
+      failureRedirect: '/login',
+      session: false,
+      failWithError: true
+    })(req, res, next);
+  },
   (req, res) => {
     try {
+      console.log('GitHub authentication successful, user:', req.user);
       const token = generateToken(req.user);
       res.json({
         message: 'GitHub authentication successful',
