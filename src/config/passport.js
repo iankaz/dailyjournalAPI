@@ -51,7 +51,7 @@ passport.use(new LocalStrategy(
 passport.use(new GitHubStrategy({
   clientID: process.env.GITHUB_CLIENT_ID,
   clientSecret: process.env.GITHUB_CLIENT_SECRET,
-  callbackURL: process.env.GITHUB_CALLBACK_URL || 'https://dailyjournal-api.onrender.com/api/auth/github/callback'
+  callbackURL: process.env.GITHUB_CALLBACK_URL
 },
 async (accessToken, refreshToken, profile, done) => {
   try {
@@ -60,14 +60,21 @@ async (accessToken, refreshToken, profile, done) => {
     if (!user) {
       // Check if this is the first user
       const userCount = await User.countDocuments();
-      const isAdmin = userCount === 0; // First user becomes admin
+      const role = userCount === 0 ? 'admin' : 'user'; // First user becomes admin
       
       user = await User.create({
         username: profile.username,
         email: profile.emails[0].value,
         githubId: profile.id,
         password: Math.random().toString(36).slice(-8),
-        isAdmin
+        role,
+        isActive: true,
+        lastLogin: new Date(),
+        preferences: {
+          theme: 'light',
+          notifications: true,
+          language: 'en'
+        }
       });
     }
     

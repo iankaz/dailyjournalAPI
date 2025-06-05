@@ -228,18 +228,27 @@ router.get('/github/callback',
     failWithError: true
   }),
   (req, res) => {
-    const token = generateToken(req.user);
-    res.json({
-      message: 'GitHub authentication successful',
-      token,
-      user: req.user.getPublicProfile()
-    });
+    try {
+      const token = generateToken(req.user);
+      res.json({
+        message: 'GitHub authentication successful',
+        token,
+        user: req.user.getPublicProfile()
+      });
+    } catch (error) {
+      console.error('Error in GitHub callback:', error);
+      res.status(500).json({
+        message: 'Error processing GitHub authentication',
+        error: error.message
+      });
+    }
   },
   (err, req, res, next) => {
     console.error('GitHub authentication error:', err);
     res.status(401).json({
       message: 'GitHub authentication failed',
-      error: err.message
+      error: err.message,
+      details: err.stack
     });
   }
 );
