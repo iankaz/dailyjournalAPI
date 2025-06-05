@@ -3,7 +3,7 @@
   "info": {
     "title": "Daily Journal API",
     "version": "1.0.0",
-    "description": "A RESTful API for managing daily journal entries with authentication and user management"
+    "description": "A RESTful API for a daily journal application"
   },
   "servers": [
     {
